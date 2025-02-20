@@ -1,0 +1,25 @@
+{
+    "name": "vlei-verifier-client",
+    "version": "0.0.1",
+    "description": "TypeScript client for the vlei-verifier service",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "prepare": "npm run build",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+        "vlei-verifier-client",
+        "client",
+        "typescript"
+    ],
+    "author": "Your Name",
+    "license": "MIT",
+    "dependencies": {
+        
+    },
+    "devDependencies": {
+        "typescript": "^5.3.3"
+    }
+}
