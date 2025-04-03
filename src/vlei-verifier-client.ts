@@ -31,8 +31,8 @@ class VerifierServiceAdapter {
         this.addRotUrl = `${this.verifierBaseUrl}/root_of_trust/`;
     }
 
-    async checkLoginRequest(aid: string, headers): Promise<Response> {
-        logger.info(`Check login request sent with: aid = ${aid}`);
+    async authorizationRequest(aid: string, headers): Promise<Response> {
+        logger.info(`Authorization request sent with: aid = ${aid}`);
         const heads = headers;
         heads.set("Content-Type", "application/json");
         const url = `${this.authsUrl}${aid}`;
@@ -43,8 +43,18 @@ class VerifierServiceAdapter {
         return res;
     }
 
-    async credentialPresentationRequest(said: string, vlei: string): Promise<Response> {
-        logger.info(`Credential presentation request sent with: said = ${said}`);
+    buildAuthorizationRequest(aid: string): {url: string, req: RequestInit} {
+        const heads = new Headers();
+        heads.set("Content-Type", "application/json");
+        const url = `${this.authsUrl}${aid}`;
+        return {url: url, req: {
+            headers: heads,
+            method: "GET",
+        }};
+    }
+
+    async presentationRequest(said: string, vlei: string): Promise<Response> {
+        logger.info(`Presentation request sent with: said = ${said}`);
         const heads = new Headers();
         heads.set("Content-Type", "application/json+cesr");
         const url = `${this.presentationsUrl}${said}`;
@@ -106,14 +116,18 @@ export class VerifierClient {
         this.verifierServiceAdapter = new VerifierServiceAdapter(verifierBaseUrl);
     }
 
-    async checkLogin(aid: string, headers): Promise<VerifierResponse> {
-        const res = await this.verifierServiceAdapter.checkLoginRequest(aid, headers);
+    async authorization(aid: string, headers): Promise<VerifierResponse> {
+        const res = await this.verifierServiceAdapter.authorizationRequest(aid, headers);
         const data = await res.json();
         return new VerifierResponse(res.status, data.msg, data);
     }
 
-    async login(said: string, vlei: string): Promise<VerifierResponse> {
-        const res = await this.verifierServiceAdapter.credentialPresentationRequest(said, vlei);
+    buildAuthorizationRequest(aid: string){
+        return this.verifierServiceAdapter.buildAuthorizationRequest(aid);
+    }
+
+    async presentation(said: string, vlei: string): Promise<VerifierResponse> {
+        const res = await this.verifierServiceAdapter.presentationRequest(said, vlei);
         const data = await res.json();
         return new VerifierResponse(res.status, data.msg, data);
     }
