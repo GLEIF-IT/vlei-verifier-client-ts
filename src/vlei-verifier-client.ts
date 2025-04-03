@@ -31,15 +31,9 @@ class VerifierServiceAdapter {
         this.addRotUrl = `${this.verifierBaseUrl}/root_of_trust/`;
     }
 
-    async authorizationRequest(aid: string, headers): Promise<Response> {
+    async authorizationRequest(aid: string, request: Request): Promise<Response> {
         logger.info(`Authorization request sent with: aid = ${aid}`);
-        const heads = headers;
-        heads.set("Content-Type", "application/json");
-        const url = `${this.authsUrl}${aid}`;
-        const res = await fetch(url, {
-            headers: heads,
-            method: "GET",
-        });
+        const res = await fetch(request);
         return res;
     }
 
@@ -116,8 +110,8 @@ export class VerifierClient {
         this.verifierServiceAdapter = new VerifierServiceAdapter(verifierBaseUrl);
     }
 
-    async authorization(aid: string, headers): Promise<VerifierResponse> {
-        const res = await this.verifierServiceAdapter.authorizationRequest(aid, headers);
+    async authorization(aid: string, request: Request): Promise<VerifierResponse> {
+        const res = await this.verifierServiceAdapter.authorizationRequest(aid, request);
         const data = await res.json();
         return new VerifierResponse(res.status, data.msg, data);
     }
