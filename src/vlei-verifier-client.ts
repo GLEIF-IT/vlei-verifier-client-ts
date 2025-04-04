@@ -38,7 +38,7 @@ class VerifierServiceAdapter {
     }
 
     private async getVerifierUrl(aid: string): Promise<string>{
-        const statusResp = await fetch(`${this.verifierBaseUrl}/status/`, {method: "GET"});
+        const statusResp = await fetch(`${this.verifierBaseUrl}/service_status`, {method: "GET"});
         const statusJson = await statusResp.json();
         const mode = statusJson["mode"];
         if (mode == "router"){
