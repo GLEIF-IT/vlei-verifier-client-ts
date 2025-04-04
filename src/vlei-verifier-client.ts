@@ -21,26 +21,42 @@ class VerifierServiceAdapter {
     private verifySignedHeadersUrl: string;
     private verifySignatureUrl: string;
     private addRotUrl: string;
+    private statusUrl: string;
 
     constructor(verifierBaseUrl: string = "http://localhost:7676") {
         this.verifierBaseUrl = verifierBaseUrl;
-        this.authsUrl = `${this.verifierBaseUrl}/authorizations/`;
-        this.presentationsUrl = `${this.verifierBaseUrl}/presentations/`;
-        this.verifySignedHeadersUrl = `${this.verifierBaseUrl}/request/verify/`;
-        this.verifySignatureUrl = `${this.verifierBaseUrl}/signature/verify/`;
-        this.addRotUrl = `${this.verifierBaseUrl}/root_of_trust/`;
     }
 
     async authorizationRequest(aid: string, request: Request): Promise<Response> {
         logger.info(`Authorization request sent with: aid = ${aid}`);
-        const res = await fetch(request);
+        const url = `${this.verifierBaseUrl}/authorizations/${aid}`;
+        const res = await fetch(url, {
+            "method": "GET",
+            "headers": request.headers
+        });
         return res;
     }
 
-    buildAuthorizationRequest(aid: string): {url: string, req: RequestInit} {
+    private async getVerifierUrl(aid: string): Promise<string>{
+        const statusResp = await fetch(`${this.verifierBaseUrl}/status/`, {method: "GET"});
+        const statusJson = await statusResp.json();
+        const mode = statusJson["mode"];
+        if (mode == "router"){
+            const getVerifierUrlResp = await fetch(`${this.verifierBaseUrl}/get_verifier_url_for_aid/${aid}`, {method: "GET"});
+            const getVerifierUrlJson = await getVerifierUrlResp.json();
+            const verifierUrl = getVerifierUrlJson["verifier_url"];
+            return verifierUrl;
+        }
+        else{
+            return this.verifierBaseUrl;
+        }
+    }
+
+    async buildAuthorizationRequest(aid: string): Promise<{url: string, req: RequestInit}> {
+        const verifierUrl = await this.getVerifierUrl(aid);
         const heads = new Headers();
         heads.set("Content-Type", "application/json");
-        const url = `${this.authsUrl}${aid}`;
+        const url = `${verifierUrl}/authorizations/${aid}`;
         return {url: url, req: {
             headers: heads,
             method: "GET",
@@ -51,7 +67,7 @@ class VerifierServiceAdapter {
         logger.info(`Presentation request sent with: said = ${said}`);
         const heads = new Headers();
         heads.set("Content-Type", "application/json+cesr");
-        const url = `${this.presentationsUrl}${said}`;
+        const url = `${this.verifierBaseUrl}/presentations/${said}`;
         const res = await fetch(url, {
             headers: heads,
             method: "PUT",
@@ -62,7 +78,7 @@ class VerifierServiceAdapter {
 
     async verifySignedHeadersRequest(aid: string, sig: string, ser: string): Promise<Response> {
         logger.info(`Signed headers verification request sent with aid = ${aid}, sig = ${sig}, ser = ${ser}`);
-        const url = `${this.verifySignedHeadersUrl}${aid}?sig=${sig}&data=${ser}`;
+        const url = `${this.verifierBaseUrl}/request/verify/${aid}?sig=${sig}&data=${ser}`;
         const res = await fetch(url, {
             method: "POST",
         });
@@ -73,7 +89,7 @@ class VerifierServiceAdapter {
         logger.info(`Signature verification request sent with signature = ${signature}, submitter = ${signerAid}, digest = ${nonPrefixedDigest}`);
         const heads = new Headers();
         heads.set("Content-Type", "application/json");
-        const url = this.verifySignatureUrl;
+        const url = `${this.verifierBaseUrl}/signature/verify/`;
         const payload = {
             signature,
             signer_aid: signerAid,
@@ -91,7 +107,7 @@ class VerifierServiceAdapter {
         logger.info(`Add root of trust request sent with: aid = ${aid}, vlei = ${vlei}, oobi = ${oobi}`);
         const heads = new Headers();
         heads.set("Content-Type", "application/json");
-        const url = `${this.addRotUrl}${aid}`;
+        const url = `${this.verifierBaseUrl}/root_of_trust/${aid}`;
         const payload = { vlei, oobi };
         const res = await fetch(url, {
             headers: heads,
@@ -116,8 +132,8 @@ export class VerifierClient {
         return new VerifierResponse(res.status, data.msg, data);
     }
 
-    buildAuthorizationRequest(aid: string){
-        return this.verifierServiceAdapter.buildAuthorizationRequest(aid);
+    async buildAuthorizationRequest(aid: string){
+        return await this.verifierServiceAdapter.buildAuthorizationRequest(aid);
     }
 
     async presentation(said: string, vlei: string): Promise<VerifierResponse> {
